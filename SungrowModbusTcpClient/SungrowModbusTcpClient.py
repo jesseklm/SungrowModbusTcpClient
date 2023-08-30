@@ -19,8 +19,8 @@ class SungrowModbusTcpClient(ModbusTcpClient):
         self._fifo = bytes()
         self._priv_key = priv_key
         self._key = None
-        self._orig_recv = self._recv
-        self._orig_send = self._send
+        self.orig_recv = self.recv
+        self.orig_send = self.send
         self._key_date = date.today()
 
     def _setup(self):
@@ -34,15 +34,15 @@ class SungrowModbusTcpClient(ModbusTcpClient):
     def _restore(self):
            self._key = None
            self._aes_ecb = None
-           self._send = self._orig_send
-           self._recv = self._orig_recv
+           self.send = self.orig_send
+           self.recv = self.orig_recv
            self._fifo = bytes()
 
     def _getkey(self):
         if (self._key is None) or (self._key_date != date.today()):
            self._restore()
-           self._send(GET_KEY)
-           self._key_packet = self._recv(25)
+           self.send(GET_KEY)
+           self._key_packet = self.recv(25)
            self._pub_key = self._key_packet[9:]
            if (len(self._pub_key) == 16) and (self._pub_key != NO_CRYPTO1) and (self._pub_key != NO_CRYPTO2):
               self._setup()
@@ -76,16 +76,16 @@ class SungrowModbusTcpClient(ModbusTcpClient):
         request = HEADER + bytes(request[2:]) + bytes([0xff for i in range(0, padding)])
         crypto_header = bytes([1, 0, length, padding])
         encrypted_request = crypto_header + self._aes_ecb.encrypt(request)
-        return ModbusTcpClient._send(self, encrypted_request) - len(crypto_header) - padding
+        return ModbusTcpClient.send(self, encrypted_request) - len(crypto_header) - padding
 
     def _recv_decipher(self, size):
         if len(self._fifo) == 0:
-            header = ModbusTcpClient._recv(self, 4)
+            header = ModbusTcpClient.recv(self, 4)
             if header and len(header) == 4:
                packet_len = int(header[2])
                padding = int(header[3])
                length = packet_len + padding
-               encrypted_packet = ModbusTcpClient._recv(self, length)
+               encrypted_packet = ModbusTcpClient.recv(self, length)
                if encrypted_packet and len(encrypted_packet) == length:
                   packet = self._aes_ecb.decrypt(encrypted_packet)
                   packet = self._transactionID + packet[2:]
