@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="SungrowModbusTcpClient",
+    name="SungrowModbusTcpClient-jesseklm",
     version="0.1.7",
     author="Roberto Panerai Velloso",
     author_email="rvelloso@gmail.com",
