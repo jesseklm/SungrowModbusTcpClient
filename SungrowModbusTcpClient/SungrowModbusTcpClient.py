@@ -8,6 +8,7 @@ NO_CRYPTO2 = b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
 GET_KEY = b'\x68\x68\x00\x00\x00\x06\xf7\x04\x0a\xe7\x00\x08'
 HEADER = bytes([0x68, 0x68])
 
+
 class SungrowModbusTcpClient(ModbusTcpClient):
     def __init__(self, priv_key=PRIV_KEY, **kwargs):
         ModbusTcpClient.__init__(self, **kwargs)
@@ -19,31 +20,31 @@ class SungrowModbusTcpClient(ModbusTcpClient):
         self._key_date = date.today()
 
     def _setup(self):
-           self._key = bytes(a ^ b for (a, b) in zip(self._pub_key, self._priv_key))
-           self._aes_ecb = AES.new(self._key, AES.MODE_ECB)
-           self._key_date = date.today()
-           self._send = self._send_cipher
-           self._recv = self._recv_decipher
-           self._fifo = bytes()
+        self._key = bytes(a ^ b for (a, b) in zip(self._pub_key, self._priv_key))
+        self._aes_ecb = AES.new(self._key, AES.MODE_ECB)
+        self._key_date = date.today()
+        self._send = self._send_cipher
+        self._recv = self._recv_decipher
+        self._fifo = bytes()
 
     def _restore(self):
-           self._key = None
-           self._aes_ecb = None
-           self.send = self.orig_send
-           self.recv = self.orig_recv
-           self._fifo = bytes()
+        self._key = None
+        self._aes_ecb = None
+        self.send = self.orig_send
+        self.recv = self.orig_recv
+        self._fifo = bytes()
 
     def _getkey(self):
         if (self._key is None) or (self._key_date != date.today()):
-           self._restore()
-           self.send(GET_KEY)
-           self._key_packet = self.recv(25)
-           self._pub_key = self._key_packet[9:]
-           if (len(self._pub_key) == 16) and (self._pub_key != NO_CRYPTO1) and (self._pub_key != NO_CRYPTO2):
-              self._setup()
-           else:
-              self._key = b'no encryption'
-              self._key_date = date.today()
+            self._restore()
+            self.send(GET_KEY)
+            self._key_packet = self.recv(25)
+            self._pub_key = self._key_packet[9:]
+            if (len(self._pub_key) == 16) and (self._pub_key != NO_CRYPTO1) and (self._pub_key != NO_CRYPTO2):
+                self._setup()
+            else:
+                self._key = b'no encryption'
+                self._key_date = date.today()
 
     def connect(self):
         self.close()
@@ -53,15 +54,15 @@ class SungrowModbusTcpClient(ModbusTcpClient):
         else:
             self._getkey()
             if self._key is not None:
-               # We now have the encryption key stored and a second
-               # connect will likely succeed.
-               self.close()
-               result = ModbusTcpClient.connect(self)
+                # We now have the encryption key stored and a second
+                # connect will likely succeed.
+                self.close()
+                result = ModbusTcpClient.connect(self)
         return result
 
     def close(self):
-       ModbusTcpClient.close(self)
-       self._fifo = bytes()
+        ModbusTcpClient.close(self)
+        self._fifo = bytes()
 
     def _send_cipher(self, request):
         self._fifo = bytes()
@@ -77,19 +78,19 @@ class SungrowModbusTcpClient(ModbusTcpClient):
         if len(self._fifo) == 0:
             header = ModbusTcpClient.recv(self, 4)
             if header and len(header) == 4:
-               packet_len = int(header[2])
-               padding = int(header[3])
-               length = packet_len + padding
-               encrypted_packet = ModbusTcpClient.recv(self, length)
-               if encrypted_packet and len(encrypted_packet) == length:
-                  packet = self._aes_ecb.decrypt(encrypted_packet)
-                  packet = self._transactionID + packet[2:]
-                  self._fifo = self._fifo + packet[:packet_len]
+                packet_len = int(header[2])
+                padding = int(header[3])
+                length = packet_len + padding
+                encrypted_packet = ModbusTcpClient.recv(self, length)
+                if encrypted_packet and len(encrypted_packet) == length:
+                    packet = self._aes_ecb.decrypt(encrypted_packet)
+                    packet = self._transactionID + packet[2:]
+                    self._fifo = self._fifo + packet[:packet_len]
 
         if size is None:
-           recv_size = 1
+            recv_size = 1
         else:
-           recv_size = size
+            recv_size = size
 
         recv_size = min(recv_size, len(self._fifo))
         result = self._fifo[:recv_size]
